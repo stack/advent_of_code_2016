@@ -50,11 +50,12 @@ def turn_left(orientation)
 end
 
 raw_input = File.read 'walking_instructions.txt'
-directions = raw_input.split ', '
+directions = raw_input.strip.split ', '
 
 orientation = :north
 x_offset = 0
 y_offset = 0
+locations = [[0,0]]
 
 directions.each do |direction|
   if direction =~ /([LR])(\d+)/
@@ -68,10 +69,15 @@ directions.each do |direction|
     orientation = new_orientation
     x_offset += new_adjustment.x
     y_offset += new_adjustment.y
+
+    # Append the location
+    locations += [[x_offset,y_offset]]
   else
     $stderr.puts "Improper direction: #{direction}"
   end
 end
 
+puts
 puts "Final position: #{orientation} - #{x_offset}, #{y_offset} = #{x_offset + y_offset}"
+puts
 
