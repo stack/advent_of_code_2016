@@ -92,6 +92,6 @@ directions.each_with_index do |direction, index|
 end
 
 `rm -f visit.mp4`
-`ffmpeg -f image2 -i visit_%03d.jpg -r 12 -s #{image_width}x#{image_height} visit.mp4` 
+`ffmpeg -f image2 -i visit_%03d.jpg -r 12 -s #{image_width}x#{image_height} -vcodec h264 visit.mkv` 
 `rm -f *.jpg`
 
