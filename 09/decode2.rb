@@ -145,4 +145,4 @@ File.open 'graph.gv', 'w' do |f|
   f.puts '}'
 end
 
-`dot graph.gv -Tpng -o graph.png`
+`dot graph.gv -Tsvg -o graph.svg`
