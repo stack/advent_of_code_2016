@@ -137,6 +137,7 @@ puts "Length: #{root.length}"
 dots = root.dots
 File.open 'graph.gv', 'w' do |f|
   f.puts 'digraph {'
+  f.puts "\trankdir=LR"
 
   dots.each do |dot|
     f.puts "\t#{dot}"
