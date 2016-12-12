@@ -104,36 +104,28 @@ class State #:nodoc:
     directions = [:up, :down]
     current_floor = @floors[@elevator]
 
-    # Two-microchip options
     directions.each do |direction|
+      # Two-microchip options
       current_floor[:microchips].permutation(2).each do |microchips|
         instructions << { direction: direction, microchips: microchips, generators: [] }
       end
-    end
 
-    # Two-generator options
-    directions.each do |direction|
+      # Two-generator options
       current_floor[:generators].permutation(2).each do |generators|
         instructions << { direction: direction, microchips: [], generators: generators }
       end
-    end
 
-    # Mixed options
-    directions.each do |direction|
+      # Mixed options
       current_floor[:microchips].each do |microchip|
         current_floor[:generators].each do |generator|
           instructions << { direction: direction, microchips: [microchip], generators: [generator] }
         end
       end
-    end
 
-    # Single microchip option
-    directions.each do |direction|
+      # Single microchip option
       instructions += current_floor[:microchips].map { |microchip| { direction: direction, microchips: [microchip], generators: [] } }
-    end
 
-    # Single generator option
-    directions.each do |direction|
+      # Single generator option
       instructions += current_floor[:generators].map { |generator| { direction: direction, microchips: [], generators: [generator] } }
     end
 
