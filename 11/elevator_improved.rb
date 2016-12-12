@@ -197,6 +197,7 @@ end
 
 # Create a queue with the first start
 queue = [state]
+visited = []
 while queue.any?
   # Get the next state
   current = queue.shift
@@ -216,7 +217,7 @@ while queue.any?
   next_states = current.possible_instructions.map { |instruction|
     next_state = current.new_from_instruction instruction
 
-    if next_state.nil? || next_state.already_visited?
+    if next_state.nil? || !visited.include?(current) || next_state.already_visited?
       nil
     else
       next_state
@@ -224,4 +225,6 @@ while queue.any?
   }
 
   queue += next_states.compact
+
+  visited << current
 end
