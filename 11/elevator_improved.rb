@@ -97,12 +97,12 @@ class State #:nodoc:
 
     directions.each do |direction|
       # Two-microchip options
-      current_floor[:microchips].permutation(2).each do |microchips|
+      current_floor[:microchips].permutation(2).to_a.uniq { |x| x.sort }.each do |microchips|
         instructions << { direction: direction, microchips: microchips, generators: [] }
       end
 
       # Two-generator options
-      current_floor[:generators].permutation(2).each do |generators|
+      current_floor[:generators].permutation(2).to_a.uniq { |x| x.sort }.each do |generators|
         instructions << { direction: direction, microchips: [], generators: generators }
       end
 
@@ -217,7 +217,12 @@ while queue.any?
   next_states = current.possible_instructions.map { |instruction|
     next_state = current.new_from_instruction instruction
 
-    if next_state.nil? || !next_state.valid? || visited.key?(next_state.unique_id)
+    if next_state.nil?
+      nil
+    elsif !next_state.valid?
+      visited[next_state.unique_id] = true
+      nil
+    elsif visited.key?(next_state.unique_id)
       nil
     else
       next_state
@@ -225,4 +230,5 @@ while queue.any?
   }
 
   queue += next_states.compact
+  queue.uniq! { |x| x.unique_id }
 end
