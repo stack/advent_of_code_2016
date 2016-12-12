@@ -43,6 +43,17 @@ class State #:nodoc:
     new_state
   end
 
+  def distance
+    distance = 0
+
+    @floors.each_with_index do |floor, idx|
+      multiplier = @types.count - idx - 1
+      distance += multiplier * (floor[:generators].count + floor[:microchips].count)
+    end
+
+    distance
+  end
+
   def add_floor(id)
     @floors[id] = { id: id, generators: [], microchips: [] }
   end
@@ -75,7 +86,7 @@ class State #:nodoc:
 
   def complete?
     last_floor = @floors.last
-    last_floor[:microchips] == @types.count && last_floor[:generators] == @types.count
+    last_floor[:microchips].count == @types.count && last_floor[:generators].count == @types.count
   end
 
   def duplicate
@@ -204,7 +215,7 @@ while queue.any?
 
   # Exit if the current state is complete
   if current.complete?
-    puts "FINAL: #{current.depth}"
+    puts "FINAL: #{current.depth + 1}"
     current.print
     break
   end
@@ -225,6 +236,7 @@ while queue.any?
   }
 
   queue += next_states.compact
+  queue.sort! { |x, y| x.distance <=> y.distance }
 
   visited << current
 end
