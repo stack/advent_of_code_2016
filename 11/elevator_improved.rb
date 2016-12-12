@@ -87,7 +87,23 @@ class State #:nodoc:
   end
 
   def unique_id
-    "#{@elevator}:#{@floors.to_msgpack}"
+    # Convert floors to position tuples
+    positions = Array.new(@types.count) { |_| [-1, -1] }
+    @types.each_with_index do |type, type_idx|
+      @floors.each_with_index do |floor, floor_idx|
+        if floor[:microchips].include? type
+          positions[type_idx][0] = floor_idx
+        end
+
+        if floor[:generators].include? type
+          positions[type_idx][1] = floor_idx
+        end
+      end
+    end
+
+    positions.sort!
+
+    "#{@elevator}:#{positions.to_msgpack}"
   end
 
   def possible_instructions
@@ -193,13 +209,15 @@ end
 queue = [state]
 visited = {}
 latest_depth = -1
+attempts = 0
 while queue.any?
   # Get the next state
   current = queue.shift
+  attempts += 1
 
   # Exit if the current state is complete
   if current.complete?
-    puts "FINAL: #{current.depth + 1}"
+    puts "FINAL: #{current.depth + 1}, ATTEMPTS: #{attempts}"
     current.print
     break
   end
@@ -208,7 +226,7 @@ while queue.any?
   current.print
 
   latest_depth = current.depth
-  puts "DEPTH: #{latest_depth}, QUEUE: #{queue.count}"
+  puts "DEPTH: #{latest_depth}, QUEUE: #{queue.count}, ATTEMPTS: #{attempts}"
 
   # Mark this as visited so we don't go back
   visited[current.unique_id] = true
