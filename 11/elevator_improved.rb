@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
 
+require 'rubygems'
+
+require 'msgpack'
 require 'set'
 
 class State #:nodoc:
@@ -68,22 +71,6 @@ class State #:nodoc:
     @types << type
   end
 
-  def already_visited?
-    return false if @previous_state.nil?
-
-    already_visited_current?(@previous_state, self)
-  end
-
-  def already_visited_current?(current_state, target_state)
-    if current_state.nil?
-      false
-    elsif current_state == target_state
-      true
-    else
-      already_visited_current?(current_state.previous_state, target_state)
-    end
-  end
-
   def complete?
     last_floor = @floors.last
     last_floor[:microchips].count == @types.count && last_floor[:generators].count == @types.count
@@ -97,6 +84,10 @@ class State #:nodoc:
     new_state.types = @types
 
     new_state
+  end
+
+  def unique_id
+    "#{@elevator}:#{@floors.to_msgpack}"
   end
 
   def possible_instructions
@@ -200,7 +191,8 @@ end
 
 # Create a queue with the first start
 queue = [state]
-visited = []
+visited = {}
+latest_depth = -1
 while queue.any?
   # Get the next state
   current = queue.shift
@@ -215,12 +207,17 @@ while queue.any?
   puts "DEPTH: #{current.depth}"
   current.print
 
+  latest_depth = current.depth
+  puts "DEPTH: #{latest_depth}, QUEUE: #{queue.count}"
+
+  # Mark this as visited so we don't go back
+  visited[current.unique_id] = true
+
   # Perform the next possible instructions, adding valid state back to the queue
-  # puts current.possible_instructions
   next_states = current.possible_instructions.map { |instruction|
     next_state = current.new_from_instruction instruction
 
-    if next_state.nil? || visited.include?(current) || next_state.already_visited?
+    if next_state.nil? || !next_state.valid? || visited.key?(next_state.unique_id)
       nil
     else
       next_state
@@ -228,7 +225,4 @@ while queue.any?
   }
 
   queue += next_states.compact
-  queue.sort! { |x, y| x.distance <=> y.distance }
-
-  visited << current
 end
