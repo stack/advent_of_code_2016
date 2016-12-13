@@ -19,10 +19,10 @@ class Traversal #:nodoc:
     @board_height = 0
   end
 
-  def find(start = [0, 0], target = [0, 0], favorite_number = 0, all = false)
+  def find(start = [0, 0], max_path = Integer::MAX, favorite_number = 0)
     # Initialize the data management
     @start = start
-    @target = target
+    @max_path = max_path
 
     @frontier = []
     @came_from = {}
@@ -44,18 +44,17 @@ class Traversal #:nodoc:
 
       print_known_board
 
-      if current == @target
-        return build_path(current)
-      end
-
       neighbors(current).each do |neighbor|
         next unless valid? neighbor
         next if visited? neighbor
 
+        distance = path_distance(current) + 1
+        next if distance > @max_path
+
         new_cost = @cost_so_far[current] + 1
         if !@cost_so_far.key?(neighbor) || new_cost < @cost_so_far[neighbor]
           @cost_so_far[neighbor] = new_cost
-          priority = new_cost + heuristic(@target, neighbor)
+          priority = new_cost
 
           @frontier << { coord: neighbor, priority: priority }
           @came_from[neighbor] = current
@@ -65,8 +64,7 @@ class Traversal #:nodoc:
       @frontier.sort! { |l, r| r[:priority] <=> l[:priority] }
     end
 
-    # We've failed, so return an empty path
-    []
+    @came_from.keys.count
   end
 
   def print_known_board
@@ -125,10 +123,6 @@ class Traversal #:nodoc:
     path.reverse
   end
   
-  def heuristic(a, b)
-    (a[0] - b[0]).abs + (a[1] - b[1]).abs
-  end
-
   def neighbors(node)
     [
       [node[0], node[1] - 1],
@@ -146,17 +140,14 @@ class Traversal #:nodoc:
   end
 
   def path_distance(node)
+    puts "Path Distance: #{@came_from.inspect}"
+
     current = node
     distance = 0
 
     while current != @start
+      puts "- #{current}"
       current = @came_from[current]
-
-      if current.nil?
-        distance = Integer::MAX
-        break
-      end
-
       distance += 1
     end
 
@@ -169,8 +160,6 @@ class Traversal #:nodoc:
     elsif node[0] > @max_x || node[1] > @max_y
       false
     elsif wall?(node)
-      false
-    elsif path_distance(node) > @max_path
       false
     else
       true
@@ -194,44 +183,8 @@ class Traversal #:nodoc:
   end
 end
 
-# Testing
+# Part 2 Input
 traversal = Traversal.new
-traversal.favorite_number = 10
+result = traversal.find [1, 1], 50, 1362
 
-test_values = '.#.####.##..#..#...##....##...###.#.###..##..#..#...##....#.#...##.###'
-test_results = test_values.split('').map { |x| x == '.' }
-
-6.times do |y|
-  10.times do |x|
-    coord = [x, y]
-    idx = (y * 10) + x
-    raise "Coord failed at #{coord}" unless traversal.open_space?(coord) == test_results[idx]
-  end
-end
-
-# Sample Input
-traversal = Traversal.new
-traversal.max_x = 10
-traversal.max_y = 7
-
-path = traversal.find [1, 1], [7, 4], 10
-
-puts
-puts path.inspect
-puts
-traversal.print_full_board path
-puts "STEPS: #{path.length - 1}"
-
-# Part 1 Input
-traversal = Traversal.new
-traversal.max_x = 100
-traversal.max_y = 100
-
-path = traversal.find [1, 1], [31, 39], 1362
-
-puts
-puts path.inspect
-puts
-traversal.print_full_board path
-puts "STEPS: #{path.length - 1}"
-
+puts "VISITED: #{result}"
