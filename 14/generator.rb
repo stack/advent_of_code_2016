@@ -16,19 +16,18 @@ class Generator #:nodoc:
       current = get_next
       puts "#{@current_idx - 1}: #{current} - #{@found.count}"
 
-      three_peat = first_repeated current, 3
+      three_peat = contains_sequence(current)
       next if three_peat.nil?
 
       puts "- Has 3-peat of #{three_peat}"
       target_letter = three_peat[0]
+      target_word = target_letter * 5
 
       fill_queue
 
-      @queue.each_with_index do |item, item_idx|
-        five_peat = first_repeated item, 5, target_letter
-
-        unless five_peat.nil?
-          puts "- Has 5-peat of #{five_peat}"
+      1000.times do |idx|
+        unless @queue[idx].index(target_word).nil?
+          puts "- Has a match with #{@queue[idx]}"
           @found << current
         end
       end
@@ -46,19 +45,9 @@ class Generator #:nodoc:
     end
   end
 
-  def first_repeated(value, count, exact = nil)
-    (value.length - count).times do |idx|
-      chunk = value[idx, count]
-      next unless chunk.split('').uniq.count == 1
-
-      if exact.nil?
-        return chunk
-      elsif chunk[0] == exact
-        return chunk
-      end
-    end
-
-    nil
+  def contains_sequence(value)
+    match = /([0-9a-f])\1\1/.match value
+    match.nil? ? nil : match[1]
   end
 
   def get_next
