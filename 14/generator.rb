@@ -1,13 +1,18 @@
 #!/usr/bin/env ruby
 
+require 'rubygems'
+
 require 'digest/md5'
+require 'rainbow'
 
 class Generator #:nodoc:
   def initialize(salt)
     @salt = salt
   end
 
-  def find(limit)
+  def find(limit, stretch)
+    @stretch = stretch
+
     @found = []
     @current_idx = 0
     @queue = []
@@ -16,11 +21,11 @@ class Generator #:nodoc:
       current = get_next
       puts "#{@current_idx - 1}: #{current} - #{@found.count}"
 
-      three_peat = contains_sequence(current)
-      next if three_peat.nil?
+      triplet = contains_sequence(current)
+      next if triplet.nil?
 
-      puts "- Has 3-peat of #{three_peat}"
-      target_letter = three_peat[0]
+      puts "- Has triplet of #{triplet}"
+      target_letter = triplet[0]
       target_word = target_letter * 5
 
       fill_queue
@@ -28,7 +33,9 @@ class Generator #:nodoc:
       1000.times do |idx|
         unless @queue[idx].index(target_word).nil?
           puts "- Has a match with #{@queue[idx]}"
-          @found << current
+          @found << { key: current, key_idx: @current_idx - 1, match: @queue[idx], match_idx: @current_idx + idx, letter: target_letter}
+          @found.uniq!
+          break
         end
       end
     end
@@ -41,7 +48,11 @@ class Generator #:nodoc:
   def fill_queue
     2000.times do |idx|
       next unless @queue[idx].nil?
-      @queue << Digest::MD5.hexdigest("#{@salt}#{@current_idx + idx}")
+
+      value = Digest::MD5.hexdigest("#{@salt}#{@current_idx + idx}")
+      value = stretch_hash(value)
+
+      @queue << value
     end
   end
 
@@ -55,10 +66,17 @@ class Generator #:nodoc:
       value = @queue.shift
     else
       value = Digest::MD5.hexdigest "#{@salt}#{@current_idx}"
+      value = stretch_hash(value)
     end
 
     @current_idx += 1
 
+    value
+  end
+
+  def stretch_hash(hash)
+    value = hash
+    @stretch.times { value = Digest::MD5.hexdigest(value) }
     value
   end
 end
@@ -70,7 +88,19 @@ end
 
 salt = ARGV[0]
 
-generator = Generator.new salt
-matches = generator.find 64
+stretch = 0
+stretch = ARGV[1].to_i unless ARGV[1].nil?
 
-puts matches
+generator = Generator.new salt
+matches = generator.find 65, stretch
+
+puts "Matches:"
+matches.each_with_index do |match, idx|
+  triplet = match[:letter] * 3
+  five = match[:letter] * 5
+
+  key = match[:key].sub triplet, Rainbow(triplet).red
+  key_match = match[:match].sub five, Rainbow(five).red
+
+  puts "(#{idx+1}) #{match[:key_idx]}: #{key} -> #{match[:match_idx]}: #{key_match}"
+end
