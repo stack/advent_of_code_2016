@@ -1,139 +1,111 @@
 #!/usr/bin/env ruby
 
-class Sculpture
-  def initialize
-    @ball = 0
-    @drop = 0
-    @time = 0
-    @positions = []
-    @sizes = []
-    @original_positions = []
-    @original_sizes
+class Disc #:nodoc:
+  attr_reader :idx
+
+  def initialize(idx, size, position, time)
+    @idx = idx
+    @size = size
+    @position = position
+    @time = time
+
+    @last_known_valid_position = initial_valid
   end
 
-  def add_disc(idx, size, position, time)
-    @sizes[idx] = size
-    @positions[idx] = position
-
-    rotate_disc idx, time * -1
+  def initial_valid
+    @size - @position - @idx
   end
 
-  def drop(time)
-    @original_positions = @positions.dup
-    @original_sizes = @sizes.dup
+  def print(time)
+    position = (@position + time) % @size
+    value = '*' * @size
+    value[position] = ' '
 
-    @drop = time
-
-    # print
-
-    while valid? && !complete?
-      @ball += 1 if @time >= @drop
-      rotate_discs
-
-      # print
-      @time += 1
-    end
-
-    complete?
+    puts "#{idx}: |#{value}|"
   end
 
-  def reset!
-    @positions = @original_positions
-    @sizes = @original_sizes
-    @ball = 0
-    @drop = 0
-    @time = 0
-  end
-
-  def rotate_disc(idx, times = 1)
-    if times == 0
-      return
-    elsif times < 0
-      @positions[idx] -= 1
-      @positions[idx] += @sizes[idx] if @positions[idx] < 0
-      rotate_disc idx, times + 1
-    elsif times > 0
-      @positions[idx] += 1
-      @positions[idx] -= @sizes[idx] if @positions[idx] >= @sizes[idx]
-      rotate_disc idx, times - 1
+  def reset_last_known_valid_position(time_range)
+    while @last_known_valid_position > time_range.min
+      puts "RESET #{@idx} #{@last_known_valid_position} by #{@size}"
+      @last_known_valid_position -= @size
     end
   end
 
-  def rotate_discs
-    @positions.count.times do |idx|
-      rotate_disc idx
-    end
-  end
+  def valid_positions(time_range)
+    # Adjust the last know valid position to make it work for the given range
+    reset_last_known_valid_position(time_range)
 
-  def print
-    if @ball == 0
-      puts '    •'
-    else
-      puts
-    end
+    positions = []
+    current = @last_known_valid_position
 
-    @positions.each_with_index do |position, idx|
-      value = '*' * @sizes[idx]
-      value[position] = ' '
+    loop do
+      next_position = current
+      current += @size
 
-      if @ball == idx + 1
-        if value[0] == ' '
-          value[0] = '•'
-        else
-          value[0] = 'X'
-        end
-      end
+      break if next_position > time_range.max
+      next unless time_range.member?(next_position)
 
-      puts "#{idx + 1}: |#{value}|"
+      positions << next_position
     end
 
-    if @ball > @positions.count
-      puts '    •'
-    else
-      puts
-    end
-  end
+    @last_known_valid_position = positions.last if positions.any?
 
-  def complete?
-    @ball > @positions.count
-  end
-
-  def valid?
-    # Valid if the ball has started
-    return true if @ball == 0
-
-    # Valid if the ball is past the discs
-    return true if complete?
-
-    # Does the ball fit in the disc
-    disc = @positions[@ball - 1]
-    disc == 0
+    positions
   end
 end
 
+class Sculpture #:nodoc:
+  CHUNK_SIZE = 1000
+
+  def initialize
+    @discs = []
+  end
+
+  def add_disc(disc)
+    @discs[disc.idx - 1] = disc
+  end
+
+  def find_valid_state
+    start_time = 0
+    loop do
+      # Get the next range
+      range = (start_time..(start_time + CHUNK_SIZE - 1))
+      puts "Inspecting #{range}"
+
+      # Get all the valid positions for that range
+      valid_positions = @discs.map { |disc| disc.valid_positions range }
+
+      # Loop for a common time across all
+      initial = valid_positions.first
+      common = valid_positions.reduce(initial) { |acc, elem| acc & elem }.sort
+      return common.first if common.any?
+
+      start_time += CHUNK_SIZE
+    end
+  end
+
+  def print(time)
+    @discs.each do |disc|
+      disc.print time
+    end
+  end
+end
 
 sculpture = Sculpture.new
 
 ARGF.each_line do |line|
   if line =~ /Disc #(\d+) has (\d+) positions; at time=(\d+), it is at position (\d+)./
-    idx = $1.to_i - 1
-    size = $2.to_i
-    time = $3.to_i
-    position = $4.to_i
+    idx = Regexp.last_match[1].to_i
+    size = Regexp.last_match[2].to_i
+    time = Regexp.last_match[3].to_i
+    position = Regexp.last_match[4].to_i
 
-    sculpture.add_disc idx, size, position, time
+    disc = Disc.new idx, size, position, time
+    sculpture.add_disc disc
   else
     raise "Invalid input: #{line}"
   end
 end
 
-time = 0
-loop do
-  puts "TIME: #{time}"
-  break if sculpture.drop time
-
-  time += 1
-  sculpture.reset!
-end
-
-puts "FINAL TIME: #{time}"
+valid_state = sculpture.find_valid_state
+puts "VALID STATE: #{valid_state}"
