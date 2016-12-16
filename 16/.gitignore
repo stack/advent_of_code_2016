@@ -1,3 +1,4 @@
 *.o
 simple
 validate
+validate_intel

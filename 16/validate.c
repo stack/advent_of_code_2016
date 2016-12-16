@@ -39,5 +39,19 @@ int main(int argc, char **argv)
 
     printf("Success!\n");
 
+    printf("Testing C Stuff... ");
+
+    uint8_t data[] = { 0xff, 0xff, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01 };
+    uint16_t *shortData = (uint16_t *)data;
+
+    assert(shortData[0] == 0xffff);
+    assert(shortData[1] == 0x0000);
+    assert(shortData[2] != 0xffff);
+    assert(shortData[2] != 0x0000);
+    assert(shortData[3] != 0xffff);
+    assert(shortData[3] != 0x0000);
+
+    printf("Success!\n");
+
     return 0;
 }

@@ -9,6 +9,9 @@ simple: main.o checksum_simple.o common.o
 
 validate: validate.o common.o
 	$(CC) -o $@ $^ $(CFLAGS)
+	
+validate_intel: validate_intel.o
+	$(CC) -o $@ $^ $(CFLAGS)
 
 %.o: %.c
 	$(CC) -c $< $(CFLAGS)
