@@ -4,11 +4,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 #include <time.h>
 
 #ifndef DEBUG
 #define DEBUG 0
 #endif
+
+#define RUNS 1000
+
+#define MIN(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
+#define MAX(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
 
 int main(int argc, char **argv)
 {
@@ -51,19 +64,47 @@ int main(int argc, char **argv)
     uint8_t *checksum = NULL;
     size_t checksumSize = 0;
     struct timespec start, stop;
+    char nameBuffer[64];
 
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    checksumData(data, diskSize, &checksum, &checksumSize);
-    clock_gettime(CLOCK_MONOTONIC, &stop);
+    uint64_t *durationsUs = (uint64_t *)malloc(sizeof(uint64_t) * RUNS);
+    int durationsUsIndex = 0;
 
-    printData("CHECK", checksum, checksumSize);
+    uint64_t minDurationUs = UINT64_MAX;
+    uint64_t maxDurationUs = 0;
+    uint64_t totalDurationsUs = 0;
 
-    uint64_t durationUs = timespecDiff(stop, start);
-    printf("Duration: %llu μs\n", durationUs);
+    for (int run = 0; run < RUNS; run++) {
+
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        checksumData(data, diskSize, &checksum, &checksumSize);
+        clock_gettime(CLOCK_MONOTONIC, &stop);
+
+        snprintf(nameBuffer, 64, "CHECKSUM %i", run);
+        printData("Checksum", checksum, checksumSize);
+
+        uint64_t durationUs = timespecDiff(stop, start);
+        printf("Duration %i: %llu μs\n", run, durationUs);
+
+        minDurationUs = MIN(minDurationUs, durationUs);
+        maxDurationUs = MAX(maxDurationUs, durationUs);
+        totalDurationsUs += durationUs;
+
+        durationsUs[durationsUsIndex] = durationUs;
+        durationsUsIndex += 1;
+
+        free(checksum);
+    }
+
+    printf("-------\n");
+    printf("Min Duration: %" PRIu64 " μs\n", minDurationUs);
+    printf("Max Duration: %" PRIu64 " μs\n", maxDurationUs);
+    printf("Mean Duration: %" PRIu64 " μs\n", durationsUs[RUNS / 2]);
+
+    double averageDurationUs = (double)totalDurationsUs / (double)RUNS;
+    printf("Average Duration: %f\n", averageDurationUs);
 
     free(input);
     free(data);
-    free(checksum);
 
     return 0;
 }

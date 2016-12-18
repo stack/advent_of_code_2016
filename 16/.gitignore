@@ -1,4 +1,6 @@
 *.o
+intel_sse3
+intel_avx2
 simple
 validate
 validate_intel
