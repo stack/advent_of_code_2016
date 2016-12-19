@@ -25,6 +25,8 @@
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
+static int durationUsCompare(const void *lhsPointer, const void *rhsPointer);
+
 int main(int argc, char **argv)
 {
     // Ensure proper input
@@ -76,7 +78,6 @@ int main(int argc, char **argv)
     uint64_t totalDurationsUs = 0;
 
     for (int run = 0; run < RUNS; run++) {
-
         clock_gettime(CLOCK_MONOTONIC, &start);
         checksumData(data, diskSize, &checksum, &checksumSize);
         clock_gettime(CLOCK_MONOTONIC, &stop);
@@ -100,13 +101,21 @@ int main(int argc, char **argv)
     printf("-------\n");
     printf("Min Duration: %" PRIu64 " μs\n", minDurationUs);
     printf("Max Duration: %" PRIu64 " μs\n", maxDurationUs);
+
+    qsort(durationsUs, RUNS, sizeof(uint64_t), durationUsCompare);
     printf("Mean Duration: %" PRIu64 " μs\n", durationsUs[RUNS / 2]);
 
     double averageDurationUs = (double)totalDurationsUs / (double)RUNS;
     printf("Average Duration: %f\n", averageDurationUs);
 
+    free(durationsUs);
     free(input);
     free(data);
 
     return 0;
+}
+
+static int durationUsCompare(const void *lhs, const void *rhs)
+{
+    return (*(uint64_t *)lhs - *(uint64_t *)rhs);
 }
