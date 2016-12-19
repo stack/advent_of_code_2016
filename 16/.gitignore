@@ -1,4 +1,5 @@
 *.o
+arm_neon
 intel_sse3
 intel_avx2
 simple

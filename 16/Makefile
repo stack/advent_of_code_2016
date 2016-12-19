@@ -1,12 +1,19 @@
-.PHONY: all clean intel
+.PHONY: all arm clean intel
 
 CFLAGS += -std=gnu11 -Wall -Werror
+
 AVX2_CFLAGS := -mavx2
+NEON_CFLAGS := -mfpu=neon
 
 all: simple validate
 
+arm: all arm_neon
+
 intel: all intel_avx2 intel_sse3 validate_intel
 	
+arm_neon: main.o checksum_arm_neon.o common.o
+	$(CC) -o $@ $^ $(CFLAGS) $(NEON_CFLAGS)
+
 intel_avx2: main.o checksum_intel_avx2.o common.o
 	$(CC) -o $@ $^ $(CFLAGS) $(AVX2_CFLAGS)
 
@@ -22,6 +29,9 @@ validate: validate.o common.o
 validate_intel: validate_intel.o
 	$(CC) -o $@ $^ $(CFLAGS) $(AVX2_CFLAGS)
 
+checksum_arm_neon.o: checksum_arm_neon.c
+	$(CC) -c $< $(CFLAGS) $(NEON_CFLAGS)
+
 checksum_intel_avx2.o: checksum_intel_avx2.c
 	$(CC) -c $< $(CFLAGS) $(AVX2_CFLAGS)
 
@@ -33,6 +43,7 @@ validate_intel.o: validate_intel.c
 
 clean:
 	rm -rf *.o
+	rm -rf arm_neon
 	rm -rf intel_avx2
 	rm -rf intel_sse3
 	rm -rf simple

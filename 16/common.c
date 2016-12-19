@@ -62,7 +62,7 @@ uint64_t timespecDiff(struct timespec lhs, struct timespec rhs)
 
     if (lhs.tv_nsec < rhs.tv_nsec) {
         delta.tv_sec = lhs.tv_sec - rhs.tv_sec - 1;
-        delta.tv_nsec = 1000000000L + delta.tv_nsec - rhs.tv_nsec;
+        delta.tv_nsec = 1000000000L + lhs.tv_nsec - rhs.tv_nsec;
     } else {
         delta.tv_sec = lhs.tv_sec - rhs.tv_sec;
         delta.tv_nsec = lhs.tv_nsec - rhs.tv_nsec;

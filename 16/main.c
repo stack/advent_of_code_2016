@@ -11,7 +11,9 @@
 #define DEBUG 0
 #endif
 
-#define RUNS 1000
+#ifndef RUNS
+#define RUNS 100
+#endif
 
 #define MIN(a,b) \
    ({ __typeof__ (a) _a = (a); \
