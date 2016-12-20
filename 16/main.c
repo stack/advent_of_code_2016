@@ -103,10 +103,10 @@ int main(int argc, char **argv)
     printf("Max Duration: %" PRIu64 " μs\n", maxDurationUs);
 
     qsort(durationsUs, RUNS, sizeof(uint64_t), durationUsCompare);
-    printf("Mean Duration: %" PRIu64 " μs\n", durationsUs[RUNS / 2]);
+    printf("Median Duration: %" PRIu64 " μs\n", durationsUs[RUNS / 2]);
 
     double averageDurationUs = (double)totalDurationsUs / (double)RUNS;
-    printf("Average Duration: %f\n", averageDurationUs);
+    printf("Mean Duration: %f\n", averageDurationUs);
 
     free(durationsUs);
     free(input);

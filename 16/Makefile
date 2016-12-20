@@ -3,6 +3,7 @@
 CFLAGS += -std=gnu11 -Wall -Werror
 
 AVX2_CFLAGS := -mavx2
+SSE3_CFLAGS := -msse3
 NEON_CFLAGS := -mfpu=neon
 
 all: simple validate
@@ -18,7 +19,7 @@ intel_avx2: main.o checksum_intel_avx2.o common.o
 	$(CC) -o $@ $^ $(CFLAGS) $(AVX2_CFLAGS)
 
 intel_sse3: main.o checksum_intel_sse3.o common.o
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS) $(SSE3_CFLAGS)
 
 simple: main.o checksum_simple.o common.o
 	$(CC) -o $@ $^ $(CFLAGS)
@@ -31,6 +32,9 @@ validate_intel: validate_intel.o
 
 checksum_arm_neon.o: checksum_arm_neon.c
 	$(CC) -c $< $(CFLAGS) $(NEON_CFLAGS)
+
+checksum_intel_sse3.o: checksum_intel_sse3.c
+	$(CC) -c $< $(CFLAGS) $(SSE3_CFLAGS)
 
 checksum_intel_avx2.o: checksum_intel_avx2.c
 	$(CC) -c $< $(CFLAGS) $(AVX2_CFLAGS)

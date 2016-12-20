@@ -45,14 +45,13 @@ void checksumData(uint8_t *data, size_t dataSize, uint8_t **checksum, size_t *ch
             source = _mm256_shuffle_epi8(source, shuffleMask);
             source = _mm256_and_si256(source, reduce);
 
-            __m128i halfResult = _mm256_extracti128_si256(source, 0);
-            _mm_storeu_si128((__m128i *)(output + outputIdx), halfResult);
-            outputIdx += 8;
+            __m128i left = _mm256_extracti128_si256(source, 0);
+            __m128i right = _mm256_extracti128_si256(source, 1);
+            __m128i unpacked = _mm_unpackhi_epi64(left, right);
 
-            halfResult = _mm256_extracti128_si256(source, 1);
-            _mm_storeu_si128((__m128i *)(output + outputIdx), halfResult);
-            outputIdx += 8;
+            _mm_storeu_si128((__m128i *)(output + outputIdx), unpacked);
 
+            outputIdx += 16;
             inputIdx += 32;
         }
 

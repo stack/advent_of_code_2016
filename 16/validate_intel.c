@@ -12,6 +12,7 @@ static void printRegister128(const char *tag, __m128i reg);
 static void printRegister256(const char *tag, __m256i reg);
 
 static void validate_avx2();
+static void validate_calc();
 static void validate_sse3();
 
 int main(int argc, char **argv)
@@ -23,6 +24,11 @@ int main(int argc, char **argv)
 
     printHeader(16);
     validate_sse3();
+
+    printf("\n");
+
+    printHeader(16);
+    validate_calc();
 
     return 0;
 }
@@ -41,8 +47,6 @@ static void validate_avx2()
 
     printRegister256("ORIGINAL", shuffleSource);
 
-    // __m256i shuffleTestMask = _mm256_set_epi8(31, 29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0);
-    // __m256i shuffleTestMask = _mm256_set_epi8(30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0);
     __m256i shuffleTestMask = _mm256_set_epi8(30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0);
 
     printRegister256("SHUFFLE ", shuffleTestMask);
@@ -56,6 +60,12 @@ static void validate_avx2()
 
     printRegister128("EXTRACT0", shuffleExtract0);
     printRegister128("EXTRACT1", shuffleExtract1);
+
+    __m128i unpackHi = _mm_unpackhi_epi64(shuffleExtract0, shuffleExtract1);
+    __m128i unpackLo = _mm_unpacklo_epi64(shuffleExtract0, shuffleExtract1);
+
+    printRegister128("UNPACKHI", unpackHi);
+    printRegister128("UNPACKLO", unpackLo);
 
     // Start with a decent test set
     uint8_t data[] = {
@@ -113,6 +123,55 @@ static void validate_avx2()
     _mm256_storeu_si256((__m256i *)result, source);
 
     printData("RESULT  ", result, 32);
+}
+
+static void validate_calc()
+{
+    // Load the data twice
+    uint8_t data[] = {
+        0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x01, 0x01,
+        0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x01, 0x01,
+    };
+
+    __m128i one = _mm_loadu_si128((__m128i *)data);
+    __m128i two = _mm_load_si128(&one);
+
+    printRegister128("ONE     ", one);
+    printRegister128("TWO     ", two);
+
+    // Shuffle the second data for addition
+    __m128i shuffleMask = _mm_set_epi8(14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1);
+    two = _mm_shuffle_epi8(two, shuffleMask);
+
+    printRegister128("SHUFFLE ", shuffleMask);
+    printRegister128("TWO*    ", two);
+
+    // Add the two sets of data
+    one = _mm_add_epi8(one, two);
+
+    printRegister128("ADD     ", one);
+
+    // Logic Operations
+    __m128i threes = _mm_set1_epi8(3);
+    __m128i ones = _mm_set1_epi8(1);
+
+    printRegister128("THREES  ", threes);
+    printRegister128("ONES    ", ones);
+
+    one = _mm_xor_si128(one, threes);
+
+    printRegister128("XOR     ", one);
+
+    one = _mm_and_si128(one, ones);
+
+    printRegister128("AND     ", one);
+
+    // Shuffle data in to place
+    shuffleMask = _mm_set_epi8(15, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10, 8, 6, 4, 2, 0);
+    one = _mm_shuffle_epi8(one, shuffleMask);
+
+    printRegister128("SHUFFLE ", shuffleMask);
+    printRegister128("FINAL   ", one);
 }
 
 static void validate_sse3()
