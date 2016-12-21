@@ -15,7 +15,12 @@ void generate(uint8_t *input, size_t inputSize, size_t targetSize, uint8_t **out
     // Generate the final output buffer
     size_t alignedFinalSize = (finalSize + 15) / 16 * 16;
     uint8_t *finalOutput = NULL;
-    posix_memalign((void **)&finalOutput, 16, alignedFinalSize);
+    int result = posix_memalign((void **)&finalOutput, 16, alignedFinalSize);
+
+    if (result != 0) {
+        fprintf(stderr, "Failed to create generation buffer: %i\n", result);
+        exit(1);
+    }
 
     // Copy the original input into the final output buffer
     memcpy(finalOutput, input, inputSize);

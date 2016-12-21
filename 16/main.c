@@ -86,7 +86,7 @@ int main(int argc, char **argv)
         printData("Checksum", checksum, checksumSize);
 
         uint64_t durationUs = timespecDiff(stop, start);
-        printf("Duration %i: %llu μs\n", run, durationUs);
+        printf("Duration %i: %" PRIu64 " μs\n", run, durationUs);
 
         minDurationUs = MIN(minDurationUs, durationUs);
         maxDurationUs = MAX(maxDurationUs, durationUs);

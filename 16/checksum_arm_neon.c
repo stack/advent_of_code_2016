@@ -18,7 +18,13 @@ void checksumData(uint8_t *data, size_t dataSize, uint8_t **checksum, size_t *ch
 
     size_t outputSize = (dataSize + 15) / 16 * 16;
     uint8_t *output = NULL;
-    posix_memalign((void **)&output, 64, outputSize);
+
+    int result = posix_memalign((void **)&output, 64, outputSize);
+    if (result != 0) {
+        fprintf(stderr, "Failed to allocate output buffer: %i\n", result);
+        exit(1);
+    }
+
     memcpy(output, data, dataSize);
 
     outputSize = dataSize;

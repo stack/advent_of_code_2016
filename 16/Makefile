@@ -1,4 +1,9 @@
-.PHONY: all arm clean intel
+.PHONY: all arm clean info intel
+
+# Determine the architecture we are building on
+ARCH := $(shell cc -v 2>&1 | grep Target | awk '{ print $$2; }')
+
+TARGETS := simple validate
 
 CFLAGS += -std=gnu11 -Wall -Werror
 
@@ -6,9 +11,24 @@ AVX2_CFLAGS := -mavx2
 SSE3_CFLAGS := -msse3
 NEON_CFLAGS := -mfpu=neon
 
-all: simple validate
 
-arm: all arm_neon
+ifeq ($(ARCH),aarch64-linux-gnu)
+    TARGETS += arm_neon
+    NEON_CFLAGS :=
+endif
+
+ifeq ($(ARCH),arm-linux-gnueabihf)
+    TARGETS += arm_neon
+    NEON_CFLAGS := -mfpu=neon
+endif
+
+
+all: $(TARGETS)
+
+info:
+	@echo ARCH:    $(ARCH)
+	@echo CFLAGS:  $(CFLAGS)
+	@echo TARGETS: $(TARGETS)
 
 intel: all intel_avx2 intel_sse3 validate_intel
 	
