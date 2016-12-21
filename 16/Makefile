@@ -1,7 +1,7 @@
 .PHONY: all arm clean info intel
 
 # Determine the architecture we are building on
-ARCH := $(shell cc -v 2>&1 | grep Target | awk '{ print $$2; }')
+ARCH := $(shell cc -v 2>&1 | grep Target | awk '{ split($$2,a,"-"); print a[1]; }')
 
 TARGETS := simple validate
 
@@ -12,14 +12,18 @@ SSE3_CFLAGS := -msse3
 NEON_CFLAGS := -mfpu=neon
 
 
-ifeq ($(ARCH),aarch64-linux-gnu)
+ifeq ($(ARCH),aarch64)
     TARGETS += arm_neon
     NEON_CFLAGS :=
 endif
 
-ifeq ($(ARCH),arm-linux-gnueabihf)
+ifeq ($(ARCH),arm)
     TARGETS += arm_neon
     NEON_CFLAGS := -mfpu=neon
+endif
+
+ifeq ($(ARCH),x86_64)
+    TARGETS += intel_avx2 intel_sse3 validate_intel
 endif
 
 
@@ -30,8 +34,6 @@ info:
 	@echo CFLAGS:  $(CFLAGS)
 	@echo TARGETS: $(TARGETS)
 
-intel: all intel_avx2 intel_sse3 validate_intel
-	
 arm_neon: main.o checksum_arm_neon.o common.o
 	$(CC) -o $@ $^ $(CFLAGS) $(NEON_CFLAGS)
 
