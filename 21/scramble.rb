@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
 
 class Scrambler #:nodoc:
-  def initialize(password)
+  def initialize(password, reversed = false)
     @password = password.split ''
+    @reversed = reversed
   end
 
   def perform(text)
@@ -29,6 +30,14 @@ class Scrambler #:nodoc:
   end
 
   def move(x, y)
+    if @reversed
+      move_internal(y, x)
+    else
+      move_internal(x, y)
+    end
+  end
+
+  def move_internal(x, y)
     temp = @password.delete_at x
     @password.insert y, temp
     puts "Moved #{x} to #{y}                  -> #{scrambled}"
@@ -41,6 +50,15 @@ class Scrambler #:nodoc:
   end
 
   def rotate(direction, steps)
+    if @reversed
+      new_direction = direction == 'left' ? 'right' : 'left'
+      rotate_internal new_direction, steps
+    else
+      rotate_internal direction, steps
+    end
+  end
+
+  def rotate_internal(direction, steps)
     steps.times do
       if direction == 'left'
         x = @password.shift
@@ -53,15 +71,59 @@ class Scrambler #:nodoc:
       end
     end
 
-    puts "Shifted #{direction.ljust(5, ' ') } #{steps} steps         -> #{scrambled}"
+    puts "Shifted #{direction.ljust(5, ' ')} #{steps} steps         -> #{scrambled}"
   end
 
   def rotate_letter(a)
+    if @reversed
+      rotate_letter_backward a
+    else
+      rotate_letter_forward a
+    end
+  end
+
+  def rotate_letter_backward(a)
+    # Find all permutations of this step to get back to
+    permutations = []
+    @password.count.times do |idx|
+      permutation = @password.dup
+
+      idx.times do
+        x = permutation.shift
+        permutation.push x
+      end
+
+      permutations << permutation
+    end
+
+    # Find the first permutation that makes sense
+    permutations.each do |permutation|
+      working_permutation = permutation.dup
+
+      idx = working_permutation.index a
+      steps = idx + 1
+      steps += 1 if idx >= 4
+
+      steps.times do
+        x = working_permutation.pop
+        working_permutation.unshift x
+      end
+
+      if working_permutation == @password
+        @password = permutation
+        return
+      end
+    end
+
+    raise 'Unsatisfied reverse permutation lookup'
+  end
+
+  def rotate_letter_forward(a)
     idx = @password.index a
     steps = idx + 1
     steps += 1 if idx >= 4
 
-    rotate 'right', steps
+    rotate_internal 'right', steps
 
     puts "Rotated #{steps} steps from #{a} @ #{idx}    -> #{scrambled}"
   end
@@ -87,14 +149,22 @@ if password.nil?
   exit 1
 end
 
+# Should we reverse?
+reversed_value = ARGV.shift || '0'
+reversed = reversed_value == '1'
+
 # Build a new scrambler
-scrambler = Scrambler.new password
-puts "                              -> 0123456789"
+scrambler = Scrambler.new password, reversed
+puts 'Reversed!' if reversed
+puts '                              -> 0123456789'
 puts "Initial                       -> #{scrambler.scrambled}"
 
 # Perform the scramble steps
-ARGF.each do |line|
-  scrambler.perform line.chomp
+instructions = ARGF.readlines
+instructions.reverse! if reversed
+
+instructions.each do |instruction|
+  scrambler.perform instruction
 end
 
 # Output the result
