@@ -5,44 +5,56 @@ require 'rubygems'
 require 'curses'
 
 class Computer #:nodoc:
-  def initialize
+  PARSE_REGEX = /(?<op>[a-z]+) (?<arg1>-?\d+|[a-d]) ?(?<arg2>-?\d+|[a-d])?/
+
+  def initialize(registers, should_print)
+    @registers = registers
+    @should_print = should_print
+
     @ptr = 0
     @instructions = []
-    @registers = [0, 0, 1, 0]
   end
 
   def <<(instruction)
     @instructions << instruction
   end
 
+  def parse_instruction(instruction)
+    match = PARSE_REGEX.match instruction
+    raise "Unmatched input line: #{instruction}" if match.nil?
+
+    instruction = {}
+    instruction[:op] = match[:op].to_sym
+    instruction[:arg1] = parse_arg match[:arg1]
+    instruction[:arg2] = parse_arg match[:arg2]
+
+    @instructions << instruction
+  end
+
+  def print_registers
+    pairs = ['a', 'b', 'c', 'd'].zip @registers
+    values = pairs.map { |p| "#{p[0]}: #{p[1]}" }
+    puts "Registers: #{values.join ', ' }"
+  end
+
   def print_state
     @instructions.each_with_index do |instruction, idx|
-      print @ptr == idx ? "> " : "  "
-      print instruction[:id].to_s.ljust(5, ' ')
-      print instruction[:arg1].to_s.ljust(4, ' ')
-      print instruction[:arg2].to_s.ljust(4, ' ')
-      print '| '
-
-      if idx == 0
-        print "a: #{@registers[0]}"
-      elsif idx == 1
-        print "b: #{@registers[1]}"
-      elsif idx == 2
-        print "c: #{@registers[2]}"
-      elsif idx == 3
-        print "d: #{@registers[3]}"
-      end
-
-      puts
+      print_instruction instruction, idx
+      print ' | '
+      print "#{(idx + 97).chr}: #{@registers[idx]}" if idx >= 0 && idx < 4
+      print "\n"
     end
   end
 
   def run
     while @ptr < @instructions.count
-      print_state
+      print_state if @should_print
 
       instruction = @instructions[@ptr]
-      perform instruction
+      m = method instruction[:op]
+      m.call instruction[:arg1], instruction[:arg2]
+
+      next unless @should_print
 
       puts 'vvvvvvvvvvvvvvvvvvvvv'
       print_state
@@ -53,60 +65,62 @@ class Computer #:nodoc:
   private
 
   def cpy(arg1, arg2)
+    value = resolve arg1
     idx = sym2reg arg2
-    @registers[idx] = arg1
+    @registers[idx] = value unless idx.nil?
     @ptr += 1
   end
 
-  def cpy2(arg1, arg2)
-    dest = sym2reg arg2
-    src = sym2reg arg1
-    @registers[dest] = @registers[src]
-    @ptr += 1
-  end
-
-  def dec(arg1)
-    idx = sym2reg arg1
+  def dec(arg1, _arg2)
+    idx = resolve_idx arg1
     @registers[idx] -= 1
     @ptr += 1
   end
 
-  def inc(arg1)
-    idx = sym2reg arg1
+  def inc(arg1, _arg2)
+    idx = resolve_idx arg1
     @registers[idx] += 1
     @ptr += 1
   end
 
   def jnz(arg1, arg2)
-    idx = sym2reg arg1
-    value = @registers[idx]
+    value = resolve arg1
+    offset = resolve arg2
 
-    if value == 0
-      @ptr += 1
+    @ptr = value.zero? ? @ptr + 1 : @ptr + offset
+  end
+
+  def parse_arg(arg)
+    if arg.nil?
+      nil
+    elsif ('a'..'d').cover? arg
+      arg.to_sym
     else
-      @ptr += arg2
+      arg.to_i
     end
   end
 
-  def jnz2(arg1, arg2)
-    if arg1 == 0
-      @ptr += 1
+  def print_instruction(instruction, idx)
+    print @ptr == idx ? '> ' : '  '
+    print instruction[:op].to_s.ljust(4, ' ')
+    print instruction[:arg1].to_s.rjust(3, ' ')
+    print instruction[:arg2].to_s.rjust(3, ' ')
+  end
+
+  def resolve(int_or_sym)
+    if int_or_sym.is_a? Symbol
+      idx = sym2reg int_or_sym
+      @registers[idx]
     else
-      @ptr += arg2
+      int_or_sym
     end
   end
 
-  def perform(instruction)
-    case instruction[:id]
-    when :cpy then cpy(instruction[:arg1], instruction[:arg2])
-    when :cpy2 then cpy2(instruction[:arg1], instruction[:arg2])
-    when :dec then dec(instruction[:arg1])
-    when :inc then inc(instruction[:arg1])
-    when :jnz then jnz(instruction[:arg1], instruction[:arg2])
-    when :jnz2 then jnz2(instruction[:arg1], instruction[:arg2])
-    when :tgl then tgl(instruction[:arg1])
+  def resolve_idx(int_or_sym)
+    if int_or_sym.is_a? Symbol
+      sym2reg int_or_sym
     else
-      raise "Invalid instruction: #{instruction[:id]}"
+      int_or_sym
     end
   end
 
@@ -116,58 +130,36 @@ class Computer #:nodoc:
     when :b then 1
     when :c then 2
     when :d then 3
-    else
-      nil
     end
   end
 
-  def tgl(arg1)
-    idx = sym2reg arg1
-    offset = @registers[idx]
+  def tgl(arg1, _arg2)
+    offset = resolve arg1
 
     instruction = @instructions[@ptr + offset]
+    @ptr += 1
+
     return if instruction.nil?
 
-    if instruction.keys.count == 2
-      if instruction[:id] == :inc
-        instruction[:id] = :dec
-      else
-        instruction[:id] = :inc
-      end
+    if instruction[:arg2].nil?
+      instruction[:op] = instruction[:op] == :inc ? :dec : :inc
     else
-      if instruction[:id] == :jnz
-        instruction[:id] = :cpy
-      else
-        instruction[:id] = :jnz
-      end
+      instruction[:op] = instruction[:op] == :jnz ? :cpy : :jnz
     end
-
-    @ptr += 1
   end
 end
 
-computer = Computer.new
+register_values = ARGV.shift
+registers = register_values.split(',').map(&:to_i)
+
+should_print_value = ARGV.shift
+should_print = should_print_value.nil? ? false : should_print_value == '1'
+
+computer = Computer.new registers, should_print
 
 ARGF.each_line do |line|
-  if line =~ /cpy (\d+) ([a-d])/
-    computer << { id: :cpy, arg1: $1.to_i, arg2: $2.to_sym }
-  elsif line =~ /cpy ([a-d]) ([a-d])/
-    computer << { id: :cpy2, arg1: $1.to_sym, arg2: $2.to_sym }
-  elsif line =~ /inc ([a-d])/
-    computer << { id: :inc, arg1: $1.to_sym }
-  elsif line =~ /dec ([a-d])/
-    computer << { id: :dec, arg1: $1.to_sym }
-  elsif line =~ /jnz ([a-d]) (-?)(\d+)/
-    value = $3.to_i * ($2 == '-' ? -1 : 1)
-    computer << { id: :jnz, arg1: $1.to_sym, arg2: value }
-  elsif line =~ /jnz (\d+) (-?)(\d+)/
-    value = $3.to_i * ($2 == '-' ? -1 : 1)
-    computer << { id: :jnz2, arg1: $1.to_i, arg2: value }
-  elsif line =~ /tgl ([a-d])/
-    computer << { id: :tgl, arg1: $1.to_sym }
-  else
-    raise "Unhandled input #{line}"
-  end
+  computer.parse_instruction line
 end
 
 computer.run
+computer.print_registers
