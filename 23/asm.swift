@@ -38,18 +38,24 @@ enum Arg {
 }
 
 enum Op {
+    case add
     case cpy
     case dec
     case inc
+    case mul
+    case nop
     case jnz
     case tgl
 
     func toString() -> String {
         switch self {
+        case .add: return "add"
         case .cpy: return "cpy"
         case .dec: return "dec"
         case .inc: return "inc"
         case .jnz: return "jnz"
+        case .mul: return "mul"
+        case .nop: return "nop"
         case .tgl: return "tgl"
         }
     }
@@ -65,7 +71,12 @@ struct Instruction {
         let parts = instruction.components(separatedBy: " ")
 
         // Convert arguments
-        let arg1 = Arg.parse(value: parts[1])
+        let arg1: Arg
+        if parts.count > 1 {
+            arg1 = Arg.parse(value: parts[1])
+        } else {
+            arg1 = .empty
+        }
 
         let arg2: Arg
         if parts.count > 2 {
@@ -77,10 +88,13 @@ struct Instruction {
         // Build the proper operator
         let op: Op
         switch parts[0] {
+        case "add": op = .add
         case "cpy": op = .cpy
         case "dec": op = .dec
         case "inc": op = .inc
         case "jnz": op = .jnz
+        case "mul": op = .mul
+        case "nop": op = .nop
         case "tgl": op = .tgl
         default:
             fatalError("Invalid op: \(parts[0])")
@@ -139,6 +153,8 @@ class Computer {
             return
         }
 
+        print("---------------------")
+
         for (idx, instruction) in instructions.enumerated() {
             let pointer = (idx == ptr) ? "> " : "  "
             let instructionString = instruction.toString()
@@ -158,6 +174,8 @@ class Computer {
 
             print("\(pointer) \(instructionString) | \(registerString)")
         }
+
+        print("---------------------")
     }
 
     func run() {
@@ -167,15 +185,35 @@ class Computer {
             let current = instructions[ptr]
 
             switch current.op {
+            case .add: add(current)
             case .cpy: cpy(current)
             case .dec: dec(current)
             case .inc: inc(current)
+            case .mul: mul(current)
+            case .nop: nop(current)
             case .jnz: jnz(current)
             case .tgl: tgl(current)
             }
 
             printState()
         }
+    }
+
+    internal func add(_ instruction: Instruction) {
+        guard let left = resolve(instruction.arg1) else {
+            return
+        }
+
+        guard let right = resolve(instruction.arg2) else {
+            return
+        }
+
+        guard let destIndex = resolveIndex(instruction.arg2) else {
+            return
+        }
+
+        registers[destIndex] = left + right
+        ptr += 1
     }
 
     internal func cpy(_ instruction: Instruction) {
@@ -222,6 +260,27 @@ class Computer {
         } else {
             ptr += offset
         }
+    }
+
+    internal func mul(_ instruction: Instruction) {
+        guard let left = resolve(instruction.arg1) else {
+            return
+        }
+
+        guard let right = resolve(instruction.arg2) else {
+            return
+        }
+
+        guard let destIndex = resolveIndex(instruction.arg2) else {
+            return
+        }
+
+        registers[destIndex] = left * right
+        ptr += 1
+    }
+
+    internal func nop(_ instruction: Instruction) {
+        ptr += 1
     }
 
     internal func resolve(_ arg: Arg) -> Int? {
